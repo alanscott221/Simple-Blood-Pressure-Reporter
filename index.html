@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en-GB"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#0b6bcb"><link rel="apple-touch-icon" href="icon-192.png"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="BP Log"><title>BP Review Log</title>
+<style>
+:root{--bg:#f5f7fa;--card:#fff;--tx:#1b2430;--mu:#667085;--ac:#0b6bcb;--bd:#d8dee8;--hi:#c62828;--ok:#2e7d32;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#10151c;--card:#1a212b;--tx:#e8edf3;--mu:#9aa6b5;--ac:#5aa9ff;--bd:#2b3441;--hi:#ff8a80;--ok:#81c784}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+main{max-width:640px;margin:0 auto;padding:12px}
+h1{font-size:20px;margin:6px 0 10px}h2{font-size:17px;margin:0 0 8px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px;margin-bottom:12px}
+.tabs{display:flex;gap:6px;margin-bottom:12px}.tabs button{flex:1}
+button{font:inherit;padding:10px 12px;border-radius:10px;border:1px solid var(--bd);background:var(--card);color:var(--tx)}
+button.p,.tabs button.on{background:var(--ac);color:#fff;border-color:var(--ac)}
+button.d{color:var(--hi)}
+input,select,textarea{font:inherit;width:100%;padding:9px;border-radius:8px;border:1px solid var(--bd);background:var(--bg);color:var(--tx)}
+.row{display:grid;grid-template-columns:24px 1fr 1fr 1fr;gap:6px;align-items:center;margin-bottom:6px}
+.row.h{color:var(--mu);font-size:13px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+label{font-size:13px;color:var(--mu);display:block;margin-bottom:3px}
+.med{display:flex;justify-content:space-between;align-items:center;margin:10px 0;padding:10px;border-radius:10px;background:var(--bg);font-weight:600}
+.med span{font-size:22px}.hi{color:var(--hi)}.mu{color:var(--mu);font-size:13px}
+.acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}.acts button{flex:1 1 40%}
+.wrap{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{border-bottom:1px solid var(--bd);padding:5px 6px;text-align:left;white-space:nowrap}
+.hide{display:none}
+@media print{body{background:#fff;color:#000}main>*:not(#rep){display:none!important}#rep .acts,#rep .noprint{display:none}.card{border:0}:root{--tx:#000;--mu:#444;--bd:#bbb;--card:#fff}}
+</style></head><body><main>
+<h1>Blood Pressure Review Log</h1>
+<div class="tabs"><button data-t="rec" class="on">Record</button><button data-t="his">History</button><button data-t="rep">Report</button></div>
+
+<section id="rec">
+<div class="card"><h2>Your details (for the report)</h2>
+<div class="two"><div><label>Name</label><input id="nm" autocomplete="name"></div><div><label>Date of birth</label><input id="dob" type="date"></div></div></div>
+<div class="card"><h2>New session</h2>
+<div class="two"><div><label>Date</label><input id="dt" type="date"></div><div><label>Session</label><select id="ty"><option>Morning</option><option>Evening</option><option>Surgery / other</option></select></div></div>
+<div class="row h" style="margin-top:10px"><span></span><span>Systolic</span><span>Diastolic</span><span>Pulse</span></div>
+<div id="rows"></div>
+<button id="addr" style="width:100%">+ Add reading</button>
+<div class="med"><div>Median<div class="mu" id="cnt"></div></div><span id="mv">–</span></div>
+<label>Notes (optional)</label><input id="nt" placeholder="e.g. after coffee, seated, left arm">
+<div class="acts"><button class="p" id="save">Save session</button><button id="clr">Clear</button></div></div>
+<div class="card"><h2>Import from Notes</h2><p class="mu" style="margin:0 0 8px">Paste text like “Sunday 1st November 26 PM” followed by lines such as “162 89”. AM/PM headings become Morning/Evening; anything else becomes Surgery / other.</p><textarea id="it" rows="6"></textarea><div class="acts"><button class="p" id="imp">Import sessions</button><button id="bk">Copy backup</button></div></div>
+</section>
+
+<section id="his" class="hide"><div id="hl"></div></section>
+
+<section id="rep" class="hide">
+<div class="card noprint"><p class="mu" style="margin:0 0 8px">Finalise builds a report from every saved session. You can keep recording afterwards and finalise again.</p>
+<button class="p" id="fin" style="width:100%">Finalise report</button></div>
+<div id="rep2"></div></section>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+function toast(m){let t=$('toast');if(!t){t=document.createElement('div');t.id='toast';t.style.cssText='position:fixed;left:12px;right:12px;bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--tx);color:var(--bg);padding:12px;border-radius:10px;z-index:9;white-space:pre-line;text-align:center';document.body.appendChild(t)}t.textContent=m;t.style.display='block';clearTimeout(t._t);t._t=setTimeout(()=>t.style.display='none',3500)}
+window.alert=toast;
+function ask(m,fn){const o=document.createElement('div');o.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:10;display:flex;align-items:center;justify-content:center;padding:16px';o.innerHTML='<div class="card" style="max-width:420px;width:100%;margin:0"><div class="mg" style="white-space:pre-line;margin-bottom:12px"></div><div class="acts"><button class="p" id="ay">OK</button><button id="an">Cancel</button></div></div>';o.querySelector('.mg').textContent=m;document.body.appendChild(o);o.querySelector('#ay').onclick=()=>{o.remove();fn()};o.querySelector('#an').onclick=()=>o.remove()}let S={profile:{name:'',dob:''},sessions:[]};
+try{const j=localStorage.getItem('bplog1');if(j)S=JSON.parse(j)}catch(e){}
+const save=()=>{try{localStorage.setItem('bplog1',JSON.stringify(S))}catch(e){}};
+const med=a=>{a=a.filter(x=>x>0).sort((x,y)=>x-y);const n=a.length;return !n?null:n%2?a[(n-1)/2]:Math.round((a[n/2-1]+a[n/2])/2)};
+const mean=a=>a.length?Math.round(a.reduce((x,y)=>x+y,0)/a.length):null;
+const today=()=>{const d=new Date();return new Date(d-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
+const fdn=s=>s?s.split('-').reverse().join('/'):'';const fd=s=>s?new Date(s+'T12:00:00').toLocaleDateString('en-GB',{weekday:'short'})+' '+fdn(s):'';
+const hiBP=(s,d)=>s>=135||d>=85;
+function show(t){['rec','his','rep'].forEach(x=>$(x).classList.toggle('hide',x!==t));document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));if(t==='his')hist()}
+document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>show(b.dataset.t));
+// rows
+let NR=0;function addRow(){NR++;$('rows').insertAdjacentHTML('beforeend',`<div class="row"><b>${NR}</b><input inputmode="numeric" pattern="[0-9]*" class="r" data-i="${NR-1}" data-k="0"><input inputmode="numeric" pattern="[0-9]*" class="r" data-i="${NR-1}" data-k="1"><input inputmode="numeric" pattern="[0-9]*" class="r" data-i="${NR-1}" data-k="2"></div>`);document.querySelectorAll('.r').forEach(e=>e.oninput=upd)}
+for(let i=0;i<5;i++)addRow();$('addr').onclick=addRow;
+const rd=()=>{const r=Array.from({length:NR},()=>[]);document.querySelectorAll('.r').forEach(e=>r[e.dataset.i][e.dataset.k]=parseInt(e.value)||0);return r};
+const medOf=r=>({s:med(r.map(x=>x[0])),d:med(r.map(x=>x[1])),p:med(r.map(x=>x[2]))});
+function upd(){const r=rd(),m=medOf(r),n=r.filter(x=>x[0]>0&&x[1]>0).length;
+$('cnt').textContent=n+' readings'+(n!==5?' (usual: 5)':'');$('mv').textContent=m.s&&m.d?m.s+'/'+m.d+(m.p?'  ·  '+m.p+' bpm':''):'–';$('mv').className=m.s&&hiBP(m.s,m.d)?'hi':''}
+document.querySelectorAll('.r').forEach(e=>e.oninput=upd);
+$('dt').value=today();$('nm').value=S.profile.name||'';$('dob').value=S.profile.dob||'';
+$('ty').value=new Date().getHours()<12?'Morning':'Evening';
+$('nm').oninput=$('dob').oninput=()=>{S.profile={name:$('nm').value.trim(),dob:$('dob').value};save()};
+$('clr').onclick=()=>{$('rows').innerHTML='';NR=0;for(let i=0;i<5;i++)addRow();$('nt').value='';upd()};
+$('save').onclick=()=>{const r=rd(),m=medOf(r),n=r.filter(x=>x[0]>0&&x[1]>0).length;
+if(!n)return alert('Enter at least one reading (systolic and diastolic).');
+if(n<5&&!window._ok)return ask('Only '+n+' of 5 readings entered. Save anyway?',()=>{window._ok=1;$('save').onclick();window._ok=0});
+const d=new Date();S.sessions.push({id:Date.now(),date:$('dt').value||today(),time:String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'),type:$('ty').value,r:r.filter(x=>x[0]>0&&x[1]>0),m,note:$('nt').value.trim()});
+save();$('clr').onclick();alert('Saved: median '+m.s+'/'+m.d)};
+const ORD={'Morning':0,'Surgery / other':1,'Evening':2};const sorted=()=>S.sessions.slice().sort((a,b)=>a.date.localeCompare(b.date)||(ORD[a.type]-ORD[b.type])||a.time.localeCompare(b.time));
+function hist(){const L=sorted().reverse();$('hl').innerHTML=L.length?L.map(s=>`<div class="card"><b>${fd(s.date)} · ${s.type}</b> <span class="mu">${s.time}</span><div class="med"><div class="mu">Median</div><span class="${hiBP(s.m.s,s.m.d)?'hi':''}">${s.m.s}/${s.m.d}${s.m.p?' · '+s.m.p:''}</span></div><div class="mu">${s.r.map(x=>x[0]+'/'+x[1]+(x[2]?'('+x[2]+')':'')).join(' · ')}</div>${s.note?`<div class="mu">Note: ${esc(s.note)}</div>`:''}<div class="acts"><button class="d" onclick="del(${s.id})">Delete</button></div></div>`).join(''):'<div class="card mu">No sessions saved yet.</div>'}
+const esc=t=>t.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+window.del=id=>ask('Delete this session?',()=>{S.sessions=S.sessions.filter(s=>s.id!==id);save();hist()});
+let TXT='';
+function build(){const L=sorted();if(!L.length)return alert('No sessions to report yet.');
+const g=t=>L.filter(s=>s.type===t),av=a=>({s:mean(a.map(s=>s.m.s)),d:mean(a.map(s=>s.m.d)),p:mean(a.map(s=>s.m.p).filter(x=>x)),n:a.length});
+const f=a=>a.n?`${a.s}/${a.d}${a.p?' (pulse '+a.p+')':''} from ${a.n} session${a.n>1?'s':''}`:'no sessions';
+const A=av(L),M=av(g('Morning')),E=av(g('Evening')),P=av(g('Surgery / other'));
+const nm=S.profile.name||'(name not entered)',db=S.profile.dob?fdn(S.profile.dob):'(not entered)';
+const lines=['BLOOD PRESSURE HOME MONITORING REPORT','Name: '+nm,'Date of birth: '+db,'Period: '+fd(L[0].date)+' to '+fd(L[L.length-1].date),'Report created: '+fd(today()),'',
+'Method: several seated readings per session (usually five); the median of each session is recorded.','',
+'SUMMARY (average of session medians, mmHg)','Overall: '+f(A),'Morning: '+f(M),'Evening: '+f(E),...(P.n?['Surgery / other: '+f(P)]:[]),'','SESSIONS'];
+L.forEach(s=>{lines.push(`${fd(s.date)} ${s.type} - **MEDIAN ${s.m.s}/${s.m.d}**${s.m.p?' (pulse '+s.m.p+')':''} - readings: ${s.r.map(x=>x[0]+'/'+x[1]).join(', ')}${s.note?' - '+s.note:''}`)});
+lines.push('','Home readings of 135/85 or above are commonly treated as raised. This log is a personal record, not medical advice.');
+TXT=lines.join('\n');
+const row=s=>`<tr><td>${fd(s.date)}</td><td>${s.type}</td><td class="${hiBP(s.m.s,s.m.d)?'hi':''}"><b>${s.m.s}/${s.m.d}</b></td><td>${s.m.p||''}</td><td>${s.r.map(x=>x[0]+'/'+x[1]).join(', ')}</td><td>${esc(s.note)}</td></tr>`;
+$('rep2').innerHTML=`<div class="card" id="rep"><h2>Blood Pressure Home Monitoring Report</h2><p style="margin:0 0 8px"><b>${esc(nm)}</b><br>DOB: ${db}<br>${fd(L[0].date)} to ${fd(L[L.length-1].date)} · ${L.length} sessions</p>
+<h2>Summary</h2><p style="margin:0 0 8px">Overall: <b>${f(A)}</b><br>Morning: ${f(M)}<br>Evening: ${f(E)}${P.n?'<br>Surgery / other: '+f(P):''}</p><div class="mu">Averages are of the session medians (mmHg).</div>
+<div class="wrap" style="margin-top:8px"><table><tr><th>Date</th><th>Session</th><th>Median</th><th>Pulse</th><th>Readings</th><th>Note</th></tr>${L.map(row).join('')}</table></div>
+<p class="mu">Home readings of 135/85 or above (red) are commonly treated as raised. Personal record, not medical advice.</p>
+<div class="acts"><button class="p" id="sh">Share</button><button id="cp">Copy for Notes</button><button id="pr">Save as PDF</button><button id="em">Email</button></div></div>`;
+$('sh').onclick=async()=>{try{const f=new File([mkPdf(TXT)],'BP-report-'+today()+'.pdf',{type:'application/pdf'});if(navigator.canShare&&navigator.canShare({files:[f]}))await navigator.share({title:'Blood pressure report',text:TXT,files:[f]});else if(navigator.share)await navigator.share({title:'Blood pressure report',text:TXT});else throw 0}catch(e){if(e&&e.name==='AbortError')return;await copy();toast('Sharing isn’t available in this view, so the report was copied instead. Paste it into a message or email.')}};
+$('cp').onclick=copy;
+$('pr').onclick=async()=>{const f='BP-report-'+today()+'.pdf',b=mkPdf(TXT);try{const d=await claude.use('downloads');if(d){await d.save({filename:f,data:b});toast('PDF saved.');return}}catch(e){if(e&&e.code==='declined')return}try{const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=f;document.body.appendChild(a);a.click();a.remove();toast('PDF created - check your Downloads.')}catch(e){try{window.print()}catch(_){alert('PDF saving is not available here.')}}};
+$('em').onclick=async()=>{await copy();toast('Report copied. If your email app doesn’t open, paste it into an email.');try{const a=document.createElement('a');a.href='mailto:?subject='+encodeURIComponent('Blood pressure report - '+nm)+'&body='+encodeURIComponent(TXT);document.body.appendChild(a);a.click();a.remove()}catch(e){}}}
+function mkPdf(text){const W=92,L=[];text.split('\n').forEach(l=>{while(l.length>W){let c=l.lastIndexOf(' ',W);if(c<20)c=W;L.push(l.slice(0,c));l=l.slice(c).trimStart()}L.push(l)});
+const pages=[];for(let i=0;i<L.length;i+=60)pages.push(L.slice(i,i+60));
+const esc=s=>s.replace(/[\\()]/g,'\\$&').replace(/[^\x20-\x7e]/g,'?');
+const o=[];o[1]='<</Type/Catalog/Pages 2 0 R>>';o[2]='<</Type/Pages/Kids['+pages.map((_,i)=>(4+i*2)+' 0 R').join(' ')+']/Count '+pages.length+'>>';o[3]='<</Type/Font/Subtype/Type1/BaseFont/Courier>>';
+pages.forEach((p,i)=>{const s='BT /F1 9 Tf 12 TL 40 800 Td '+p.map(l=>'/'+(l.includes('MEDIAN')?'F2':'F1')+' 9 Tf ('+esc(l.replace(/\*\*/g,''))+') Tj T*').join(' ')+' ET';o[4+i*2]='<</Type/Page/Parent 2 0 R/MediaBox[0 0 595 842]/Resources<</Font<</F1 3 0 R/F2<</Type/Font/Subtype/Type1/BaseFont/Courier-Bold>>>>>>/Contents '+(5+i*2)+' 0 R>>';o[5+i*2]='<</Length '+s.length+'>>\nstream\n'+s+'\nendstream'});
+let out='%PDF-1.4\n';const xr=[];for(let i=1;i<o.length;i++){xr[i]=out.length;out+=i+' 0 obj\n'+o[i]+'\nendobj\n'}
+const x=out.length;out+='xref\n0 '+o.length+'\n0000000000 65535 f \n'+xr.slice(1).map(v=>String(v).padStart(10,'0')+' 00000 n \n').join('')+'trailer\n<</Size '+o.length+'/Root 1 0 R>>\nstartxref\n'+x+'\n%%EOF';
+return new Blob([out],{type:'application/pdf'})}
+async function copy(){try{await navigator.clipboard.writeText(TXT);alert('Report copied.')}catch(e){const t=document.createElement('textarea');t.value=TXT;document.body.appendChild(t);t.select();try{document.execCommand('copy');alert('Report copied.')}catch(_){alert('Copy failed.')}t.remove()}}
+$('bk').onclick=async()=>{const t=JSON.stringify(S);try{await navigator.clipboard.writeText(t);alert('Backup copied. To restore elsewhere, paste it into the box above and press Import.')}catch(e){$('it').value=t;$('it').select();alert('Backup placed in the box above - copy it from there.')}};
+$('imp').onclick=()=>{const raw=$('it').value.trim();if(raw[0]==='{'){try{const j=JSON.parse(raw);if(!Array.isArray(j.sessions))throw 0;return ask('Restore backup with '+j.sessions.length+' session(s)? Matching sessions are replaced.',()=>{const ids=new Set(j.sessions.map(s=>s.id));S.sessions=S.sessions.filter(s=>!ids.has(s.id)).concat(j.sessions);if(j.profile&&!S.profile.name){S.profile=j.profile;$('nm').value=S.profile.name||'';$('dob').value=S.profile.dob||''}save();$('it').value='';alert('Backup restored.')})}catch(e){return alert('That backup text could not be read.')}}const MO=['january','february','march','april','may','june','july','august','september','october','november','december'];let cur=null,out=[];
+$('it').value.split('\n').forEach(l=>{const h=l.match(/(\d{1,2})(?:st|nd|rd|th)?\s+(january|february|march|april|may|june|july|august|september|october|november|december)\w*\s+(\d{2,4})\s*(.*)/i);
+if(h){let y=+h[3];if(y<100)y+=2000;const rest=h[4],ty=/\bam\b|morning/i.test(rest)?'Morning':/\bpm\b|evening/i.test(rest)?'Evening':'Surgery / other';cur={id:Date.now()+out.length,date:y+'-'+String(MO.indexOf(h[2].toLowerCase())+1).padStart(2,'0')+'-'+String(+h[1]).padStart(2,'0'),time:ty==='Morning'?'08:00':ty==='Evening'?'21:00':'15:00',type:ty,r:[],note:ty==='Surgery / other'?rest.replace(/^\W+/,''):''};out.push(cur);return}
+const m=l.match(/^\s*(\d{2,3})\s+(\d{2,3})(?:\s+(\d{2,3}))?\s*$/);if(m&&cur)cur.r.push([+m[1],+m[2],+m[3]||0])});
+out=out.filter(s=>s.r.length);
+if(!out.length)return alert('No sessions found to import.');
+out.forEach(s=>{s.m=medOf(s.r);s.ex=S.sessions.find(x=>x.date===s.date&&x.type===s.type)});
+ask('Import '+out.length+' session(s)? UPDATE replaces the readings of a session already saved for that date and type.\n'+out.map(s=>(s.ex?'UPDATE ':'NEW ')+fd(s.date)+' '+s.type+': '+s.m.s+'/'+s.m.d+(s.m.p?' · pulse '+s.m.p:'')+' ('+s.r.length+' readings)').join('\n'),()=>{
+out.forEach(s=>{const e=s.ex;delete s.ex;if(e){e.r=s.r;e.m=s.m;if(s.note)e.note=s.note}else S.sessions.push(s)});save();$('it').value='';alert('Imported.')})};
+$('fin').onclick=build;upd();
+if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+</script></body></html>
