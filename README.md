@@ -8,18 +8,12 @@ A simple, private blood pressure logging app for use ahead of a medication or bl
 - Systolic and diastolic are required for each reading. Pulse is optional.
 - The median of each session is calculated automatically.
 - Record over as many days as you need. History lists sessions in order by date, then Morning, Surgery / other, Evening.
+- Correct any saved session later: tap **Edit** on a row in the finalised report (or in **History**), change the date, session type, readings or note, then update. Finalise again to refresh the report.
 - Optional name and date of birth, included in the report.
 - **Finalise** builds a report with overall, morning and evening averages (averages of the session medians) and a table of every session. Session medians are highlighted, and medians at or above 135/85 are shown in red.
 - Share the report (with a PDF attached where the device allows), copy it for a notes app, save it as a PDF, or send it by email.
-- Import readings by pasting notes text, for example:
-
-  ```
-  Sunday 1st November 26 PM
-  162 89
-  159 96
-  ```
-
-  Headings ending in AM or PM become Morning or Evening, and anything else becomes Surgery / other. Pasting a session that already exists updates it.
+- Import readings by pasting notes text: a date heading (for example `Mon 2nd Nov AM` or `02/11/2026 evening`) followed by one reading per line, such as `162 89` or `162/89/60` (pulse optional). AM/PM or morning/evening sets the session; surgery, GP or afternoon becomes Surgery / other. With no heading, the readings are imported as one session using the date and type selected in the form. Pasting a session that already exists updates it.
+- A **Settings** tab with basic how-to instructions, a backup button and a delete-all-data option.
 - Copy a backup of all data, and restore it by pasting it into the same import box.
 
 ## Privacy
